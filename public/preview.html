@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Profilely Preview</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        /* Updated to match app palette */
+        --bg: #f7fafc;
+        --card-bg: #ffffff;
+        --text: #0f1724;
+        --muted: rgba(15, 23, 36, 0.68);
+        --accent: #ff6b6b;
+        --accent-bg: rgba(255, 107, 107, 0.08);
+        --border: #e6eef4;
+        --shadow-sm: 0 8px 30px rgba(12, 16, 20, 0.06);
+      }
+      body {
+        font-family:
+          Inter,
+          system-ui,
+          Segoe UI,
+          Roboto,
+          -apple-system,
+          Arial;
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .wrap {
+        max-width: 900px;
+        margin: 28px auto;
+        padding: 24px;
+        background: var(--card-bg);
+        box-shadow: var(--shadow-sm);
+        border-radius: 12px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0;
+      }
+      p.muted {
+        color: var(--muted);
+        margin: 8px 0;
+      }
+      .skills {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 12px 0;
+      }
+      .chip {
+        background: var(--accent-bg);
+        padding: 6px 10px;
+        border-radius: 999px;
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .lang-summary {
+        color: var(--muted);
+        margin-bottom: 12px;
+      }
+      .projects {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      .project {
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--card-bg);
+      }
+      .project h3 {
+        margin: 0 0 6px 0;
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 8px;
+      }
+      .empty {
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <h1 id="title">Portfolio Preview</h1>
+          <p class="muted" id="subtitle">
+            Live updates appear here when available.
+          </p>
+        </div>
+        <div id="links"></div>
+      </header>
+
+      <section id="about" style="margin-top: 16px">
+        <h3>About</h3>
+        <p id="aboutText" class="muted">No bio provided.</p>
+      </section>
+
+      <section id="skillsSec" style="margin-top: 14px">
+        <h3>Skills</h3>
+        <div id="skills" class="skills"></div>
+      </section>
+
+      <section id="langSec" style="margin-top: 14px">
+        <h3>Languages</h3>
+        <div id="langs" class="lang-summary">—</div>
+      </section>
+
+      <section id="projectsSec" style="margin-top: 14px">
+        <h3>Projects</h3>
+        <div id="projects" class="projects"></div>
+      </section>
+    </div>
+
+    <script>
+      function escapeHtml(s) {
+        if (s === undefined || s === null) return "";
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function formatDate(d) {
+        try {
+          const dt = new Date(d);
+          return dt.toLocaleDateString();
+        } catch (e) {
+          return "";
+        }
+      }
+
+      function render(payload) {
+        if (!payload) payload = {};
+        const userData = payload.userData || {};
+        const repos = payload.repos || [];
+        document.getElementById("title").textContent =
+          userData.name || "Portfolio Preview";
+        document.getElementById("subtitle").textContent = userData.bio || "";
+        const links = document.getElementById("links");
+        links.innerHTML = "";
+        (userData.links || []).forEach((l) => {
+          const a = document.createElement("a");
+          a.href = l.url || "#";
+          a.textContent = l.label || l.url || "link";
+          a.style.marginLeft = "8px";
+          a.style.color = "var(--accent)";
+          a.target = "_blank";
+          links.appendChild(a);
+        });
+
+        document.getElementById("aboutText").textContent =
+          userData.bio || "No bio provided.";
+        const skillsEl = document.getElementById("skills");
+        skillsEl.innerHTML = "";
+        const skills = (userData.skills?.technical || []).concat(
+          userData.skills?.tools || [],
+        );
+        if (skills.length === 0) {
+          skillsEl.innerHTML = '<div class="empty">No skills listed</div>';
+        } else
+          skills.forEach((s) => {
+            const sp = document.createElement("span");
+            sp.className = "chip";
+            sp.textContent = s;
+            skillsEl.appendChild(sp);
+          });
+
+        // languages summary
+        const langMap = {};
+        repos.forEach((r) => {
+          if (r.language) langMap[r.language] = (langMap[r.language] || 0) + 1;
+        });
+        const langs = Object.entries(langMap)
+          .sort((a, b) => b[1] - a[1])
+          .map((t) => `${t[0]}: ${t[1]}`);
+        document.getElementById("langs").textContent = langs.length
+          ? langs.join(" • ")
+          : "No languages detected";
+
+        const projEl = document.getElementById("projects");
+        projEl.innerHTML = "";
+        if (repos.length === 0) {
+          projEl.innerHTML = '<div class="empty">No projects selected</div>';
+        }
+        repos.forEach((r) => {
+          const art = document.createElement("article");
+          art.className = "project";
+          const h3 = document.createElement("h3");
+          const a = document.createElement("a");
+          a.href = r.html_url || "#";
+          a.textContent = r.name || "repo";
+          a.target = "_blank";
+          h3.appendChild(a);
+          const p = document.createElement("p");
+          p.textContent =
+            r.hasReadme && r.readme
+              ? r.readme.split("\n\n")[0].slice(0, 400)
+              : r.description || "No description available";
+          const meta = document.createElement("div");
+          meta.className = "meta";
+          meta.textContent = `${r.language || "—"} • ⭐ ${r.stargazers_count || 0} • ${r.updated_at ? formatDate(r.updated_at) : "—"}`;
+          art.appendChild(h3);
+          art.appendChild(p);
+          art.appendChild(meta);
+          projEl.appendChild(art);
+        });
+      }
+
+      // initial render from localStorage
+      try {
+        const raw = localStorage.getItem("profilely_preview");
+        if (raw) {
+          render(JSON.parse(raw));
+        } else {
+          render({});
+        }
+      } catch (e) {
+        render({});
+      }
+
+      // listen for updates via BroadcastChannel
+      try {
+        const bc = new BroadcastChannel("profilely-preview");
+        bc.onmessage = (ev) => {
+          render(ev.data);
+        };
+      } catch (e) {
+        /* ignore if not supported */
+      }
+    </script>
+  </body>
+</html>
